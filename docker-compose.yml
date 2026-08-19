@@ -9,5 +9,20 @@ services:
       interval: 5s
       timeout: 3s
       retries: 10
+  # api:
+  #   build: .
+  #   command: ['node', 'dist/apps/demo/apps/demo/src/main.js']
+  #   env_file: .env.example
+  #   environment: { REDIS_HOST: redis }
+  #   ports: ['3000:3000']
+  #   depends_on:
+  #     redis: { condition: service_healthy }
+  # worker:
+  #   build: .
+  #   command: ['node', 'dist/apps/demo/apps/demo/src/worker.main.js']
+  #   env_file: .env.example
+  #   environment: { REDIS_HOST: redis }
+  #   depends_on:
+  #     redis: { condition: service_healthy }
 volumes:
   redis-data:

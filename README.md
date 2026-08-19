@@ -1,155 +1,77 @@
-## Reusable `@app/bullmq` library
+# NestJS BullMQ Demo
 
-`@app/bullmq` is the shared BullMQ infrastructure library for this monorepo. It owns generic queue setup, queue access, monitoring, workers, and shutdown behavior only; keep application/domain job names, payload contracts, and handler logic in the consuming app.
+Monorepo with `apps/demo` (producer HTTP API) and `libs/bullmq` (reusable BullMQ module). The API registers queues only; workers are started only by `worker.main.ts`. These unauthenticated endpoints are local/demo-only and must not be exposed publicly.
 
-High-level structure under `libs/bullmq/src`:
+## Run
 
-- `bullmq.module.ts` - dynamic Nest module entry point.
-- `services/queue` - `QueueService` producer/admin facade.
-- `services/queue-registry` - creates and stores registered BullMQ `Queue` instances.
-- `services/monitoring` - lightweight queue statistics.
-- `services/worker-manager` - creates and tracks BullMQ `Worker` instances.
-- `services/lifecycle` - closes workers and queues on Nest shutdown.
-- `shared` - public interfaces, DI tokens, and helpers.
-
-Always import public APIs from the package root:
-
-```ts
-import { BullMqModule, QueueService, type QueueDefinition } from '@app/bullmq';
+```bash
+npm install
+npm run build
+docker compose up redis -d
+npm run start:demo
+npm run start:worker
 ```
 
-### Configure the module and queues
+## Routes
 
-`BullMqModule.forRoot(options, queues?, workers?)` accepts `BullMqRootOptions`, an optional `QueueDefinition[]`, and an optional `WorkerDefinition[]`:
+- `GET /health`
+- `GET /live` for liveness
+- `GET /ready` for Redis-aware readiness with bounded timeout
+- `POST /jobs/normal` body `{"message":"hello"}`
+- `POST /jobs/bulk` body `{"chunkSize":100,"jobs":[{"message":"a"},{"message":"b"}]}`; `QueueService.enqueueBulk` chunks into independent BullMQ `addBulk` calls, never per-job adds. Empty arrays return accepted `0`. If a later chunk fails, earlier chunks remain accepted; response is only returned when all chunks succeed.
+- `POST /jobs/delayed` body `{"message":"later","delayMs":5000}`
+- `POST /jobs/retry-deterministic` body `{"message":"retry","failUntilAttempt":1,"attempts":3,"backoffType":"fixed","backoffDelayMs":100}` or `{"message":"retry","failUntilAttempt":1,"attempts":3,"backoffType":"exponential","backoffDelayMs":100}`. BullMQ `attemptsMade` is zero on the first execution; this fails while `attemptsMade < failUntilAttempt` and then retries using the selected BullMQ backoff.
+- `POST /jobs/priority` body `{"message":"important","priority":1}`. Lower numeric priority means higher BullMQ priority; waiting FIFO order is still affected by worker availability.
+- `POST /jobs/load` body `{"count":10000,"chunkSize":250,"deterministicFailures":true}`
+- `GET /jobs/stats`
+- `GET /jobs/:id`
+- `DELETE /jobs/:id`
+- `POST /jobs/:id/retry`
 
-```ts
-import { Module } from '@nestjs/common';
-import { BullMqModule, type QueueDefinition } from '@app/bullmq';
+Examples:
 
-const queues: QueueDefinition[] = [
-  {
-    name: 'email',
-    defaultJobOptions: { attempts: 3, backoff: { type: 'exponential', delay: 1_000 } },
-    options: { limiter: { max: 100, duration: 60_000 } },
-  },
-];
-
-@Module({
-  imports: [
-    BullMqModule.forRoot(
-      {
-        connection: { host: 'localhost', port: 6379 },
-        queuePrefix: 'micro-app',
-        defaultJobOptions: { removeOnComplete: true },
-      },
-      queues,
-    ),
-  ],
-})
-export class AppModule {}
+```bash
+curl -s localhost:3000/health
+curl -s -X POST localhost:3000/jobs/normal -H "content-type: application/json" -d '{"message":"hi"}'
+curl -s -X POST localhost:3000/jobs/retry-deterministic -H "content-type: application/json" -d '{"message":"fixed retry","failUntilAttempt":1,"attempts":3,"backoffType":"fixed","backoffDelayMs":100}'
+curl -s -X POST localhost:3000/jobs/retry-deterministic -H "content-type: application/json" -d '{"message":"exponential retry","failUntilAttempt":1,"attempts":3,"backoffType":"exponential","backoffDelayMs":100}'
+curl -s localhost:3000/jobs/stats
 ```
 
-`forRootAsync` accepts one options object with `imports`, `inject`, `useFactory`, plus optional `queues` and `workers`:
+Manual checklist: enqueue normal, bulk 10,000 with chunks, delayed, deterministic retry with fixed backoff, deterministic retry with exponential backoff, priority jobs queued before worker start, load, stats, get job, remove/retry admin routes.
 
-```ts
-BullMqModule.forRootAsync({
-  imports: [ConfigModule],
-  inject: [ConfigService],
-  useFactory: (config: ConfigService) => ({
-    connection: { host: config.getOrThrow('REDIS_HOST'), port: 6379 },
-    queuePrefix: 'micro-app',
-  }),
-  queues,
-});
+## Operational notes
+
+- Redis uses `maxRetriesPerRequest: null`, required by BullMQ workers.
+- `WORKER_ID` defaults to `HOSTNAME` then PID, so Docker/Kubernetes replicas get distinct logs.
+- Shutdown is coordinated by `BullMqLifecycleService`: workers are closed before queues in the same Nest context. `worker.close()` waits for active jobs, but pod/process grace periods can still interrupt work. BullMQ delivery is at-least-once; processors should be idempotent.
+- Stats use BullMQ counts plus a single `getJobs(['waiting'], 0, 0, true)` peek for oldest waiting age; no full queue scan.
+- BullMQ v5 worker `limiter` is a global rate limiter for workers processing a queue, not per worker process.
+- Priority is non-preemptive: lower numeric priority is processed first among waiting jobs, but it does not interrupt active jobs and can be affected by available workers.
+- Docker Redis uses AOF `appendfsync everysec`, so a crash can lose roughly the last second of writes.
+- This demo is intentionally producer/worker only; no extra business domain is implemented.
+
+## Docker and Kubernetes
+
+```bash
+docker build -t micro-app:latest .
+docker compose config
+docker compose up --build --scale worker=3
+kubectl apply -f k8s/namespace.yaml
+kubectl apply -f k8s/configmap.yaml
+kubectl apply -f k8s/redis/
+kubectl apply -f k8s/demo-api/
+kubectl apply -f k8s/demo-worker/
 ```
 
-Queue definitions use `name`, optional BullMQ `QueueOptions` except `connection`/`prefix`, and optional `defaultJobOptions`. The library injects `connection`, `prefix`, and merges root and queue defaults.
+Kubernetes manifests use a `ClusterIP` API service (not public exposure). Do not apply `k8s/secret.example.yaml` in the baseline demo; it is only an example for future Redis auth. The demo Redis manifest runs without password auth for internal local-demo use.
 
-### Produce and inspect jobs with `QueueService`
+## Tests
 
-Normal consumers should prefer `QueueService` over direct BullMQ queue access:
-
-```ts
-import { Injectable } from '@nestjs/common';
-import { QueueService, type QueueBulkJobInput } from '@app/bullmq';
-
-@Injectable()
-export class EmailProducer {
-  constructor(private readonly queues: QueueService) {}
-
-  async sendWelcome(userId: string) {
-    return this.queues.enqueue('email', 'welcome', { userId }, { priority: 5 });
-  }
-
-  async sendDigestBatch(userIds: string[]) {
-    const jobs: Array<QueueBulkJobInput<{ userId: string }>> = userIds.map((userId) => ({
-      name: 'digest',
-      data: { userId },
-      opts: { attempts: 2 },
-    }));
-
-    return this.queues.enqueueBulk('email', jobs, 500); // chunkSize defaults to 100
-  }
-
-  scheduleReminder(userId: string) {
-    return this.queues.enqueueDelayed('email', 'reminder', { userId }, 60_000);
-  }
-
-  getJob(id: string) {
-    return this.queues.getJob('email', id);
-  }
-
-  removeJob(id: string) {
-    return this.queues.removeJob('email', id);
-  }
-
-  retryJob(id: string) {
-    return this.queues.retryJob('email', id);
-  }
-
-  stats() {
-    return this.queues.getStats('email');
-  }
-}
+```bash
+npm run lint
+npm run test:unit
+RUN_INTEGRATION_TESTS=true TEST_REDIS_DB=15 npm run test:integration
 ```
 
-Accepted job options are filtered to the supported BullMQ fields: `attempts`, `backoff`, `delay`, `priority`, `removeOnComplete`, `removeOnFail`, `jobId`, `lifo`, `timeout`, and `stackTraceLimit`.
-
-### Configure workers
-
-Workers are registered through `WorkerDefinition[]` passed to `forRoot`/`forRootAsync`. Put workers in a worker-only Nest process (not in every HTTP/API process), and run multiple replicas when you want distributed concurrency; each replica creates its own BullMQ workers.
-
-```ts
-import { Module } from '@nestjs/common';
-import { Job } from 'bullmq';
-import { BullMqModule, type WorkerDefinition } from '@app/bullmq';
-
-type EmailPayload = { userId: string };
-
-const workers: WorkerDefinition<EmailPayload>[] = [
-  {
-    queueName: 'email',
-    processor: async (job: Job<EmailPayload>) => {
-      // call app/domain services here
-      return { sent: true, userId: job.data.userId };
-    },
-    options: { concurrency: 10, limiter: { max: 50, duration: 1_000 } },
-  },
-];
-
-@Module({
-  imports: [BullMqModule.forRoot({ connection: { host: 'localhost', port: 6379 } }, [], workers)],
-})
-export class WorkerModule {}
-```
-
-`WorkerManagerService` registers configured workers on module init and can also register additional `WorkerDefinition`s programmatically. `QueueRegistryService` registers/lists/closes queues, and `QueueMonitoringService` returns counts plus oldest waiting job age; use them directly only for infrastructure-level needs.
-
-### Shutdown and behavior notes
-
-- Call `app.enableShutdownHooks()` during bootstrap so `BullMqLifecycleService` closes workers before queues on process shutdown.
-- Each Nest application context owns the queues/workers it creates; do not share instances across processes.
-- BullMQ priority affects waiting order but does not preempt already active jobs.
-- `enqueueBulk` chunks calls to BullMQ, but each job remains independent after enqueue.
-- Retries are at-least-once; make handlers idempotent and safe for duplicate execution.
-- BullMQ limiter options throttle starts per worker/queue according to BullMQ semantics; they are not a global business quota unless configured/deployed accordingly.
+Integration tests skip unless `RUN_INTEGRATION_TESTS=true` and require reachable Redis via `TEST_REDIS_*` or `REDIS_*`.

@@ -14,7 +14,7 @@
     "format": "prettier --write \"**/*.{ts,js,json,md,yml,yaml}\"",
     "format:check": "prettier --check \"**/*.{ts,js,json,md,yml,yaml}\"",
     "test": "jest --config jest.config.ts --runInBand",
-    "test:demo:unit": "jest --config jest.config.ts --runInBand apps/demo/src/bullmq-demo/services/demo.service.spec.ts",
+    "test:demo:unit": "jest --config jest.config.ts --runInBand apps/demo/src/bullmq-demo/services/demo.service.spec.ts apps/demo/src/bullmq-demo/controllers/demo.controller.spec.ts",
     "test:demo:controller": "jest --config jest.config.ts --runInBand apps/demo/src/bullmq-demo/controllers/demo.controller.spec.ts",
     "test:unit": "jest --config jest.config.ts --runInBand --testPathIgnorePatterns=integration",
     "test:unit:coverage": "jest --config jest.config.ts --runInBand --testPathIgnorePatterns=integration --coverage --collectCoverageFrom=libs/bullmq/src/services/**/*.ts --collectCoverageFrom=libs/bullmq/src/shared/helpers/**/*.ts",
