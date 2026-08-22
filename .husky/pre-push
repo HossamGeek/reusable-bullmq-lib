@@ -1,6 +1,6 @@
-npm run lint || exit 1
+npm run lint
 
-npm test -- --runInBand --changedSince=origin/main || exit 1
+npm test -- --runInBand --changedSince=origin/main
 
 # ADD It if you want to run only changed tests
 
