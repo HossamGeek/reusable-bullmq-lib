@@ -7,6 +7,8 @@ const config: Config = {
   moduleNameMapper: {
     '^@app/bullmq$': '<rootDir>/libs/bullmq/src',
     '^@app/bullmq/(.*)$': '<rootDir>/libs/bullmq/src/$1',
+    '^@app/database$': '<rootDir>/libs/database/src',
+    '^@app/database/(.*)$': '<rootDir>/libs/database/src/$1',
   },
   setupFiles: ['reflect-metadata'],
   collectCoverageFrom: ['apps/**/*.ts', 'libs/**/*.ts'],

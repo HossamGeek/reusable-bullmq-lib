@@ -18,6 +18,13 @@
       "entryFile": "index",
       "sourceRoot": "libs/bullmq/src",
       "compilerOptions": { "tsConfigPath": "libs/bullmq/tsconfig.lib.json" }
+    },
+    "database": {
+      "type": "library",
+      "root": "libs/database",
+      "entryFile": "index",
+      "sourceRoot": "libs/database/src",
+      "compilerOptions": { "tsConfigPath": "libs/database/tsconfig.lib.json" }
     }
   }
 }

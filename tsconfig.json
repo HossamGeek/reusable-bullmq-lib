@@ -19,7 +19,12 @@
     "strictBindCallApply": true,
     "forceConsistentCasingInFileNames": true,
     "noFallthroughCasesInSwitch": true,
-    "paths": { "@app/bullmq": ["libs/bullmq/src"], "@app/bullmq/*": ["libs/bullmq/src/*"] }
+    "paths": {
+      "@app/bullmq": ["libs/bullmq/src"],
+      "@app/bullmq/*": ["libs/bullmq/src/*"],
+      "@app/database": ["libs/database/src"],
+      "@app/database/*": ["libs/database/src/*"]
+    }
   },
   "exclude": ["node_modules", "dist"]
 }
