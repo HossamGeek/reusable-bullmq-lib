@@ -9,6 +9,8 @@ const config: Config = {
     '^@app/bullmq/(.*)$': '<rootDir>/libs/bullmq/src/$1',
     '^@app/database$': '<rootDir>/libs/database/src',
     '^@app/database/(.*)$': '<rootDir>/libs/database/src/$1',
+    '^@app/notification$': '<rootDir>/libs/notification/src',
+    '^@app/notification/(.*)$': '<rootDir>/libs/notification/src/$1',
   },
   setupFiles: ['reflect-metadata'],
   collectCoverageFrom: ['apps/**/*.ts', 'libs/**/*.ts'],

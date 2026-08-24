@@ -25,6 +25,13 @@
       "entryFile": "index",
       "sourceRoot": "libs/database/src",
       "compilerOptions": { "tsConfigPath": "libs/database/tsconfig.lib.json" }
+    },
+    "notification": {
+      "type": "library",
+      "root": "libs/notification",
+      "entryFile": "index",
+      "sourceRoot": "libs/notification/src",
+      "compilerOptions": { "tsConfigPath": "libs/notification/tsconfig.lib.json" }
     }
   }
 }

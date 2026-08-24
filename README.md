@@ -153,3 +153,15 @@ export class WorkerModule {}
 - `enqueueBulk` chunks calls to BullMQ, but each job remains independent after enqueue.
 - Retries are at-least-once; make handlers idempotent and safe for duplicate execution.
 - BullMQ limiter options throttle starts per worker/queue according to BullMQ semantics; they are not a global business quota unless configured/deployed accordingly.
+
+## Workspace migrations
+
+Each migration-owning library keeps its TypeORM migrations and their registration isolated inside its own persistence layer (e.g. `libs/notification/src/infrastructure/persistence/typeorm/migrations`) and exports a standalone `createMigrationsDataSource()` factory. The generic CLI in `scripts/migrations.cli.ts` runs them through the registry in `scripts/migrations.registry.ts`:
+
+```bash
+npm run migration:run -- notification     # apply pending migrations
+npm run migration:revert -- notification  # revert the last applied migration
+npm run migration:show -- notification    # list executed/pending migrations
+```
+
+To add another migration-owning library, export `createMigrationsDataSource()` from the library's migrations barrel and add one entry to `migrationModules`; no extra package scripts are required.
