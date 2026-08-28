@@ -13,7 +13,6 @@ export class NotificationOutboxMapper {
       publishAttempts: record.publishAttempts,
       lastPublishError: record.lastPublishError ?? null,
       nextPublishAt: record.nextPublishAt ?? null,
-      createdAt: record.createdAt ?? undefined,
     };
   }
 

@@ -1,4 +1,5 @@
 import { Global, Module } from '@nestjs/common';
+import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { DatabaseOptionsFactory } from '../../shared/factories';
 
@@ -11,8 +12,13 @@ import { DatabaseOptionsFactory } from '../../shared/factories';
 @Module({
   imports: [
     TypeOrmModule.forRootAsync({
-      inject: [DatabaseOptionsFactory],
-      useFactory: (factory: DatabaseOptionsFactory) => factory.createTypeOrmOptions(),
+      // ConfigModule is imported here so ConfigService is resolvable inside
+      // the TypeOrmCoreModule context (parent module providers are not visible
+      // to forRootAsync's inject array).
+      imports: [ConfigModule],
+      inject: [ConfigService],
+      useFactory: (configService: ConfigService) =>
+        new DatabaseOptionsFactory(configService).createTypeOrmOptions(),
     }),
   ],
   providers: [DatabaseOptionsFactory],

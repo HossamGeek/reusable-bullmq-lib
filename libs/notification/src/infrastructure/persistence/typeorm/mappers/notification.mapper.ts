@@ -5,11 +5,6 @@ import { NotificationReference } from '../../../../domain/value-objects/notifica
 import { Recipient } from '../../../../domain/value-objects/recipient.value-object';
 import { NotificationOrmEntity } from '../entities/notification.orm-entity';
 
-/**
- * Maps between the notification domain model and its TypeORM persistence
- * model. JSONB `context` is opaque at the persistence boundary and is cast
- * back to the typed contract through {@link NotificationContextMap}.
- */
 export class NotificationMapper {
   static toOrm(notification: Notification): QueryDeepPartialEntity<NotificationOrmEntity> {
     return {
@@ -22,8 +17,6 @@ export class NotificationMapper {
       referenceId: notification.reference.id,
       context: notification.context,
       status: notification.status,
-      createdAt: notification.createdAt ?? undefined,
-      updatedAt: notification.updatedAt ?? undefined,
     };
   }
 

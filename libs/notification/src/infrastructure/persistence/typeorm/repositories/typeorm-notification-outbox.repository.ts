@@ -2,7 +2,6 @@ import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import {
   DeepPartial,
-  FindOptionsRelations,
   FindOptionsWhere,
   IsNull,
   LessThanOrEqual,
@@ -15,11 +14,6 @@ import {
 } from '../../../../application/ports/persistence/notification-outbox-repository.port';
 import { NotificationOutboxOrmEntity } from '../entities/notification-outbox.orm-entity';
 import { NotificationOutboxMapper } from '../mappers/notification-outbox.mapper';
-
-const DEFAULT_PUBLISHABLE_LIMIT = 100;
-const DELIVERY_RELATION = {
-  delivery: true,
-} satisfies FindOptionsRelations<NotificationOutboxOrmEntity>;
 
 @Injectable()
 export class TypeOrmNotificationOutboxRepository implements NotificationOutboxRepository {
@@ -38,19 +32,23 @@ export class TypeOrmNotificationOutboxRepository implements NotificationOutboxRe
   async findById(id: string): Promise<NotificationOutboxRecord | null> {
     const orm = await this.repository.findOne({
       where: { id },
-      relations: DELIVERY_RELATION,
+      relations: {
+        delivery: true,
+      },
     });
     return orm ? NotificationOutboxMapper.toRecord(orm) : null;
   }
 
   async findPublishable(options?: FindPublishableOptions): Promise<NotificationOutboxRecord[]> {
     const now = options?.now ?? new Date();
-    const limit = options?.limit ?? DEFAULT_PUBLISHABLE_LIMIT;
+    const limit = options?.limit ?? 100;
     const rows = await this.repository.find({
       where: this.publishableCriteria(now),
       order: { createdAt: 'ASC' },
       take: limit,
-      relations: DELIVERY_RELATION,
+      relations: {
+        delivery: true,
+      },
     });
     return rows.map((row) => NotificationOutboxMapper.toRecord(row));
   }

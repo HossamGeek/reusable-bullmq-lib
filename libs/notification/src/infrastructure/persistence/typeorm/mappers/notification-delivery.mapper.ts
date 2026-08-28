@@ -16,8 +16,6 @@ export class NotificationDeliveryMapper {
       providerMessageId: delivery.providerMessageId ?? null,
       lastError: delivery.lastError ?? null,
       sentAt: delivery.sentAt ?? null,
-      createdAt: delivery.createdAt ?? undefined,
-      updatedAt: delivery.updatedAt ?? undefined,
     };
   }
 
