@@ -28,14 +28,14 @@ export class NotificationQueuePublisher implements QueuePublisherPort {
   }
 
   private resolveQueueName(channel: NotificationChannel): string {
-      switch (channel) {
-        case NotificationChannel.EMAIL:
-          return NOTIFICATION_QUEUE_NAMES.EMAIL;
-        case NotificationChannel.WHATSAPP:
-          return NOTIFICATION_QUEUE_NAMES.WHATSAPP;
-        default:
-          throw new Error(`Unsupported notification channel: ${String(channel)}`);
-      }
+    switch (channel) {
+      case NotificationChannel.EMAIL:
+        return NOTIFICATION_QUEUE_NAMES.EMAIL;
+      case NotificationChannel.WHATSAPP:
+        return NOTIFICATION_QUEUE_NAMES.WHATSAPP;
+      default:
+        throw new Error(`Unsupported notification channel: ${String(channel)}`);
+    }
   }
 
   private createNotificationJobId(jobId: string, jobName: string): string {

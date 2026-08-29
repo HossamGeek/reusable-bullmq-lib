@@ -83,6 +83,7 @@ export class CreateNotificationHandler
           await outbox.save({
             id: null,
             deliveryId,
+            channel,
             publishedAt: null,
             publishAttempts: 0,
             lastPublishError: null,
