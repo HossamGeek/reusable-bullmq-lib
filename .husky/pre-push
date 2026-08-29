@@ -1,11 +1,15 @@
 npm run lint
 
-if git rev-parse --verify @{u} >/dev/null 2>&1; then
-  CHANGED_TESTS=$(git diff --name-only @{u}...HEAD | grep '^test/unit/' || true)
-else
-  CHANGED_TESTS=$(git diff --name-only HEAD~1 HEAD | grep '^test/unit/' || true)
-fi
+npm test -- --runInBand --changedSince=origin/main
 
-if [ -n "$CHANGED_TESTS" ]; then
-  npm test -- --runInBand
-fi
+# ADD It if you want to run only changed tests
+
+# if git rev-parse --verify @{u} >/dev/null 2>&1; then
+#   CHANGED_TESTS=$(git diff --name-only @{u}...HEAD | grep '\.spec\.ts$' || true)
+# else
+#   CHANGED_TESTS=$(git diff --name-only HEAD~1 HEAD | grep '\.spec\.ts$' || true)
+# fi
+
+# if [ -n "$CHANGED_TESTS" ]; then
+#   npm test -- --runInBand
+# fi
