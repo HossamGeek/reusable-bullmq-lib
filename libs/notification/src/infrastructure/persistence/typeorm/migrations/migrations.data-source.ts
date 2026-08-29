@@ -1,3 +1,4 @@
+import 'dotenv/config';
 import { DataSource } from 'typeorm';
 import { CreateNotificationTables20260823000001 } from './20260823000001-create-notification-tables.migration';
 

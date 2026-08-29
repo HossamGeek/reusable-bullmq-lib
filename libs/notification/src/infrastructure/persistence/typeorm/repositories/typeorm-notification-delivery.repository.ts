@@ -1,14 +1,10 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { DeepPartial, FindOptionsRelations, Repository } from 'typeorm';
+import { DeepPartial, Repository } from 'typeorm';
 import { NotificationDelivery } from '../../../../domain/entities/notification-delivery.entity';
 import { NotificationDeliveryRepository } from '../../../../application/ports/persistence/notification-delivery-repository.port';
 import { NotificationDeliveryOrmEntity } from '../entities/notification-delivery.orm-entity';
 import { NotificationDeliveryMapper } from '../mappers/notification-delivery.mapper';
-
-const NOTIFICATION_RELATION: FindOptionsRelations<NotificationDeliveryOrmEntity> = {
-  notification: true,
-};
 
 @Injectable()
 export class TypeOrmNotificationDeliveryRepository implements NotificationDeliveryRepository {
@@ -27,7 +23,9 @@ export class TypeOrmNotificationDeliveryRepository implements NotificationDelive
   async findById(id: string): Promise<NotificationDelivery | null> {
     const orm = await this.repository.findOne({
       where: { id },
-      relations: NOTIFICATION_RELATION,
+      relations: {
+        notification: true,
+      },
     });
     return orm ? NotificationDeliveryMapper.toDomain(orm) : null;
   }
@@ -35,7 +33,9 @@ export class TypeOrmNotificationDeliveryRepository implements NotificationDelive
   async findDeliveriesByNotificationId(notificationId: string): Promise<NotificationDelivery[]> {
     const rows = await this.repository.find({
       where: { notification: { id: notificationId } },
-      relations: NOTIFICATION_RELATION,
+      relations: {
+        notification: true,
+      },
       order: { createdAt: 'ASC' },
     });
     return rows.map((row) => NotificationDeliveryMapper.toDomain(row));
