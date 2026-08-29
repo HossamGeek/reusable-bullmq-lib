@@ -24,6 +24,7 @@ export class NotificationOutboxMapper {
     return {
       id: String(orm.id),
       deliveryId: String(orm.delivery.id),
+      channel: orm.delivery.channel,
       publishedAt: orm.publishedAt ?? null,
       publishAttempts: Number(orm.publishAttempts),
       lastPublishError: orm.lastPublishError ?? null,

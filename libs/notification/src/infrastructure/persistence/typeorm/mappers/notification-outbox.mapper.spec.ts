@@ -1,3 +1,4 @@
+import { NotificationChannel } from '../../../../domain/enums/notification-channel.enum';
 import { NotificationOutboxRecord } from '../../../../application/ports/persistence/notification-outbox-repository.port';
 import { NotificationDeliveryOrmEntity } from '../entities/notification-delivery.orm-entity';
 import { NotificationOutboxOrmEntity } from '../entities/notification-outbox.orm-entity';
@@ -7,6 +8,7 @@ describe('NotificationOutboxMapper', () => {
   const buildNewRecord = (): NotificationOutboxRecord => ({
     id: null,
     deliveryId: '11',
+    channel: NotificationChannel.EMAIL,
     publishedAt: null,
     publishAttempts: 0,
     lastPublishError: null,
@@ -58,7 +60,10 @@ describe('NotificationOutboxMapper', () => {
     const createdAt = new Date('2026-08-23T09:00:00Z');
     const orm = {
       id: '3',
-      delivery: { id: '11' } as NotificationDeliveryOrmEntity,
+      delivery: {
+        id: '11',
+        channel: NotificationChannel.WHATSAPP,
+      } as NotificationDeliveryOrmEntity,
       publishedAt: null,
       publishAttempts: 2,
       lastPublishError: 'temporary provider outage',
@@ -71,6 +76,7 @@ describe('NotificationOutboxMapper', () => {
     expect(record).toEqual({
       id: '3',
       deliveryId: '11',
+      channel: NotificationChannel.WHATSAPP,
       publishedAt: null,
       publishAttempts: 2,
       lastPublishError: 'temporary provider outage',
@@ -98,7 +104,7 @@ describe('NotificationOutboxMapper', () => {
 
     const record = NotificationOutboxMapper.toRecord({
       id: '3',
-      delivery: { id: '11' },
+      delivery: { id: '11', channel: NotificationChannel.EMAIL },
       publishedAt: null,
       publishAttempts: 0,
       lastPublishError: null,
@@ -117,8 +123,6 @@ describe('NotificationOutboxMapper', () => {
       publishAttempts: 0,
     } as unknown as NotificationOutboxOrmEntity;
 
-    expect(() => NotificationOutboxMapper.toRecord(orm)).toThrow(
-      /missing its delivery relation/,
-    );
+    expect(() => NotificationOutboxMapper.toRecord(orm)).toThrow(/missing its delivery relation/);
   });
 });
