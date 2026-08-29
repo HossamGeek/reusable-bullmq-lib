@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import {
   DeepPartial,
+  EntityManager,
   FindOptionsWhere,
   IsNull,
   LessThanOrEqual,
@@ -11,6 +12,7 @@ import {
   FindPublishableOptions,
   NotificationOutboxRecord,
   NotificationOutboxRepository,
+  OutboxPublishTransaction,
 } from '../../../../application/ports/persistence/notification-outbox-repository.port';
 import { NotificationOutboxOrmEntity } from '../entities/notification-outbox.orm-entity';
 import { NotificationOutboxMapper } from '../mappers/notification-outbox.mapper';
@@ -51,6 +53,83 @@ export class TypeOrmNotificationOutboxRepository implements NotificationOutboxRe
       },
     });
     return rows.map((row) => NotificationOutboxMapper.toRecord(row));
+  }
+
+  async processPublishable<T>(
+    options: FindPublishableOptions,
+    processor: (records: NotificationOutboxRecord[], tx: OutboxPublishTransaction) => Promise<T>,
+  ): Promise<T> {
+    const now = options?.now ?? new Date();
+    const limit = options?.limit ?? 100;
+
+    return this.repository.manager.transaction(async (manager) => {
+      const repo = manager.getRepository(NotificationOutboxOrmEntity);
+      const rows = await repo.find({
+        where: this.publishableCriteria(now),
+        order: { createdAt: 'ASC' },
+        take: limit,
+        relations: {
+          delivery: true,
+        },
+        lock: { mode: 'pessimistic_write', onLocked: 'skip_locked' },
+      });
+
+      const records = rows.map((row) => NotificationOutboxMapper.toRecord(row));
+      const tx: OutboxPublishTransaction = {
+        markPublished: (recordId, publishedAt, publishAttempts) =>
+          this.markPublishedIn(manager, recordId, publishedAt, publishAttempts),
+        schedulePublishRetry: (recordId, nextPublishAt, error, publishAttempts) =>
+          this.schedulePublishRetryIn(manager, recordId, nextPublishAt, error, publishAttempts),
+      };
+
+      return processor(records, tx);
+    });
+  }
+
+  async markPublished(recordId: string, publishedAt: Date, publishAttempts: number): Promise<void> {
+    await this.repository.update(
+      { id: recordId },
+      { publishedAt, lastPublishError: null, nextPublishAt: null, publishAttempts },
+    );
+  }
+
+  async schedulePublishRetry(
+    recordId: string,
+    nextPublishAt: Date,
+    error: string,
+    publishAttempts: number,
+  ): Promise<void> {
+    await this.repository.update(
+      { id: recordId },
+      { lastPublishError: error, nextPublishAt, publishAttempts },
+    );
+  }
+
+  private async markPublishedIn(
+    manager: EntityManager,
+    recordId: string,
+    publishedAt: Date,
+    publishAttempts: number,
+  ): Promise<void> {
+    await manager.update(
+      NotificationOutboxOrmEntity,
+      { id: recordId },
+      { publishedAt, lastPublishError: null, nextPublishAt: null, publishAttempts },
+    );
+  }
+
+  private async schedulePublishRetryIn(
+    manager: EntityManager,
+    recordId: string,
+    nextPublishAt: Date,
+    error: string,
+    publishAttempts: number,
+  ): Promise<void> {
+    await manager.update(
+      NotificationOutboxOrmEntity,
+      { id: recordId },
+      { lastPublishError: error, nextPublishAt, publishAttempts },
+    );
   }
 
   /**

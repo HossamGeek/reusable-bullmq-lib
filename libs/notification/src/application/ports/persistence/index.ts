@@ -12,6 +12,7 @@ export {
   NotificationOutboxRepository,
   NotificationOutboxRecord,
   FindPublishableOptions,
+  OutboxPublishTransaction,
 } from './notification-outbox-repository.port';
 export {
   NOTIFICATION_TRANSACTION,

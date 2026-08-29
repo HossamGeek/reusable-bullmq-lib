@@ -150,6 +150,7 @@ describe('CreateNotificationHandler', () => {
       {
         id: null,
         deliveryId: '5001',
+        channel: NotificationChannel.EMAIL,
         publishedAt: null,
         publishAttempts: 0,
         lastPublishError: null,
@@ -159,6 +160,7 @@ describe('CreateNotificationHandler', () => {
       {
         id: null,
         deliveryId: '5002',
+        channel: NotificationChannel.WHATSAPP,
         publishedAt: null,
         publishAttempts: 0,
         lastPublishError: null,
